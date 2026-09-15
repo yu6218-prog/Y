@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>주사위 대결</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page-bg:#EFEAD9;
+    --cream:#FBF6E8;
+    --ink:#17140F;
+    --pine:#1F4B3E;
+    --pine-dim:#163527;
+    --gold:#B9862F;
+    --gold-dim:#8A6B2E;
+    --muted:#6B675C;
+    --line:#DAD3BC;
+    --panel:#F7F2E3;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Noto Sans KR',sans-serif;
+    background:var(--page-bg);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    overflow-x:hidden;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+  }
+  .screen{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:32px 20px;
+    min-height:100vh;
+    animation:fadein .35s ease;
+  }
+  @keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .hidden{display:none !important;}
+
+  /* ---------- HOME ---------- */
+  .title{
+    font-family:'Jua',sans-serif;
+    font-size:clamp(40px,9vw,64px);
+    color:var(--gold);
+    letter-spacing:2px;
+    margin:0 0 6px;
+    text-align:center;
+  }
+  .subtitle{color:var(--muted);font-size:15px;margin:0 0 40px;text-align:center;line-height:1.6;}
+  .home-dice-row{display:flex;gap:14px;margin-bottom:44px;}
+  .home-die{width:56px;height:56px;}
+  .menu-btn{
+    font-family:'Jua',sans-serif;
+    font-size:22px;
+    letter-spacing:1px;
+    width:min(340px,80vw);
+    padding:20px 0;
+    margin:10px 0;
+    border:none;
+    border-radius:18px;
+    background:var(--pine);
+    color:var(--cream);
+    box-shadow:0 6px 0 var(--pine-dim);
+    cursor:pointer;
+    transition:transform .08s ease;
+  }
+  .menu-btn:active{transform:translateY(6px);box-shadow:0 0 0 var(--pine-dim);}
+  .menu-btn.secondary{background:transparent;color:var(--pine);border:2px solid var(--pine);box-shadow:none;}
+  .menu-btn.secondary:active{transform:translateY(2px);}
+
+  /* ---------- GAME ---------- */
+  .game-screen{padding:16px 16px 28px;justify-content:flex-start;width:100%;max-width:600px;margin:0 auto;}
+  .topbar{width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .back-btn{background:none;border:none;color:var(--muted);font-size:14px;padding:8px 10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+  .mode-label{font-family:'Jua',sans-serif;color:var(--gold);font-size:16px;letter-spacing:1px;}
+  .round-count{color:var(--muted);font-size:13px;}
+
+  .panel{width:100%;padding:12px 8px 16px;border-radius:20px;background:var(--panel);border:1px solid var(--line);transition:box-shadow .2s ease;}
+  .panel.flip{transform:rotate(180deg);}
+  .panel.turn-active{box-shadow:0 0 0 2px var(--gold) inset;}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:0 8px 10px;}
+  .panel-name{font-family:'Jua',sans-serif;font-size:17px;color:var(--pine);}
+  .score-track{display:flex;gap:5px;}
+  .pip{width:11px;height:11px;border-radius:50%;background:rgba(0,0,0,0.1);}
+  .pip.filled{background:var(--gold);}
+
+  .dice-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:0 4px;}
+  .die{
+    aspect-ratio:1/1;
+    background:var(--cream);
+    border:3.5px solid var(--ink);
+    border-radius:16%;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,1fr);
+    padding:12%;
+    cursor:default;
+    transition:transform .12s ease, box-shadow .12s ease, opacity .15s ease;
+  }
+  .die.locked{opacity:.55;}
+  .die.active-turn{
+    cursor:pointer;
+    box-shadow:0 0 0 4px var(--gold);
+    animation:pulse 1s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.06);}}
+  .die.rolling{animation:none;box-shadow:0 0 0 4px var(--gold);}
+  .pip-dot{width:100%;height:100%;border-radius:50%;visibility:hidden;align-self:center;justify-self:center;background:var(--ink);}
+  .p1{grid-area:1/1;} .p2{grid-area:1/2;} .p3{grid-area:1/3;}
+  .p4{grid-area:2/1;} .p5{grid-area:2/2;} .p6{grid-area:2/3;}
+  .p7{grid-area:3/1;} .p8{grid-area:3/2;} .p9{grid-area:3/3;}
+
+  .vs-row{display:flex;align-items:center;justify-content:center;gap:14px;margin:14px 0;}
+  .score-col{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .sum-badge{font-family:'Jua',sans-serif;font-size:26px;color:var(--gold);min-width:52px;text-align:center;}
+  .combo-tag{font-size:11px;font-weight:700;color:var(--pine);min-height:14px;}
+  .vs-word{font-family:'Jua',sans-serif;color:var(--muted);font-size:14px;}
+
+  .turn-bar{
+    display:flex;align-items:center;justify-content:center;gap:14px;
+    min-height:44px;margin:4px 0 8px;
+  }
+  .turn-text{font-size:15px;color:var(--ink);}
+  .turn-text b{color:var(--gold);}
+  .pass-btn{
+    font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:14px;
+    padding:9px 18px;border-radius:12px;border:2px solid var(--gold);
+    background:transparent;color:var(--gold);cursor:pointer;
+  }
+  .pass-btn:active{transform:scale(0.96);}
+  .pass-btn.hidden{visibility:hidden;}
+
+  .skill-btn{
+    position:fixed;
+    bottom:10px;
+    right:10px;
+    width:3cm;
+    height:3cm;
+    padding:0;
+    margin:0;
+    border:none;
+    background:transparent;
+    cursor:pointer;
+    z-index:40;
+  }
+  .skill-btn::after{
+    content:'';
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:0.05cm;
+    height:0.05cm;
+    border-radius:50%;
+    background:var(--gold);
+    transform:translate(-50%,-50%);
+  }
+
+  .result-line{text-align:center;min-height:22px;font-size:14px;color:var(--muted);margin:6px 0 10px;}
+  .result-line.win{color:var(--gold);font-weight:700;}
+
+  .next-btn{
+    font-family:'Jua',sans-serif;font-size:22px;width:100%;padding:18px 0;
+    border:none;border-radius:18px;background:var(--gold);color:var(--cream);
+    box-shadow:0 6px 0 var(--gold-dim);cursor:pointer;
+  }
+  .next-btn:active{transform:translateY(6px);box-shadow:0 0 0 var(--gold-dim);}
+
+  /* ---------- END ---------- */
+  .end-card{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:40px 30px;text-align:center;width:min(420px,88vw);}
+  .end-title{font-family:'Jua',sans-serif;font-size:30px;color:var(--gold);margin:0 0 8px;}
+  .end-sub{color:var(--muted);font-size:14px;margin:0 0 30px;}
+  .combo-info-btn{
+    display:block;margin:2px auto 12px;position:relative;
+    font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:13px;
+    padding:7px 16px;border-radius:20px;border:1px solid var(--pine);
+    background:transparent;color:var(--pine);cursor:pointer;
+  }
+  .combo-info-btn:active{transform:scale(0.96);}
+  .skill-dots{
+    position:fixed;
+    top:10px;
+    right:10px;
+    font-size:9px;
+    letter-spacing:2px;
+    color:var(--pine);
+    z-index:40;
+    pointer-events:none;
+  }
+
+  .join-box{width:min(340px,80vw);margin-top:6px;display:flex;flex-direction:column;}
+  .join-input{
+    font-family:'Jua',sans-serif;font-size:22px;letter-spacing:6px;text-align:center;
+    padding:16px 0;border-radius:14px;border:2px solid var(--pine);
+    background:var(--cream);color:var(--ink);width:100%;
+  }
+  .join-input:focus{outline:none;border-color:var(--gold);}
+  .lobby-error{color:#B4432E;font-size:13px;min-height:18px;margin-top:10px;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.45);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;z-index:50;
+  }
+  .modal-card{
+    background:var(--cream);border-radius:20px;padding:20px 18px 16px;
+    width:min(420px,92vw);max-height:80vh;overflow-y:auto;
+  }
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .modal-title{font-family:'Jua',sans-serif;font-size:19px;color:var(--pine);}
+  .modal-close{background:none;border:none;font-size:16px;color:var(--muted);cursor:pointer;padding:4px 8px;}
+  .combo-list{display:flex;flex-direction:column;gap:2px;}
+  .combo-row{
+    display:grid;grid-template-columns:1fr 1.3fr auto;gap:8px;align-items:center;
+    padding:8px 4px;border-bottom:1px solid var(--line);
+  }
+  .combo-row:last-child{border-bottom:none;}
+  .combo-name{font-weight:700;font-size:13px;color:var(--ink);}
+  .combo-desc{font-size:12px;color:var(--muted);}
+  .combo-mult{font-family:'Jua',sans-serif;font-size:15px;color:var(--gold);text-align:right;}
+  .modal-note{font-size:11px;color:var(--muted);margin:12px 2px 0;text-align:center;}
+
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen">
+  <h1 class="title">주사위 대결</h1>
+  <p class="subtitle">주사위 6개씩, 합이 높은 쪽이 승리 · 먼저 10승하면 게임 승리<br>주사위를 눌러서 굴리거나, 패스로 그대로 둘 수 있어요</p>
+  <div class="home-dice-row">
+    <svg class="home-die" viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" rx="9" fill="#FBF6E8" stroke="#17140F" stroke-width="4"/><circle cx="30" cy="30" r="6" fill="#17140F"/></svg>
+    <svg class="home-die" viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" rx="9" fill="#FBF6E8" stroke="#17140F" stroke-width="4"/><circle cx="18" cy="18" r="6" fill="#17140F"/><circle cx="42" cy="42" r="6" fill="#17140F"/></svg>
+    <svg class="home-die" viewBox="0 0 60 60"><rect x="2" y="2" width="56" height="56" rx="9" fill="#FBF6E8" stroke="#17140F" stroke-width="4"/><circle cx="18" cy="18" r="6" fill="#17140F"/><circle cx="42" cy="18" r="6" fill="#17140F"/><circle cx="18" cy="42" r="6" fill="#17140F"/><circle cx="42" cy="42" r="6" fill="#17140F"/><circle cx="30" cy="30" r="6" fill="#17140F"/></svg>
+  </div>
+  <button class="menu-btn" onclick="startGame('ai')">AI와 대결</button>
+  <button class="menu-btn secondary" onclick="startGame('friend')">친구와 대결</button>
+  <button class="menu-btn secondary" onclick="showOnlineLobby()">온라인 대결</button>
+</div>
+
+<!-- ONLINE LOBBY -->
+<div id="onlineLobby" class="screen hidden">
+  <h1 class="title" style="font-size:32px;">온라인 대결</h1>
+  <p class="subtitle">다른 기기와 방 코드로 연결해서 대결해요</p>
+  <button class="menu-btn" onclick="createRoom()">방 만들기</button>
+  <button class="menu-btn secondary" onclick="startRandomMatch()">랜덤 매칭</button>
+  <div class="join-box">
+    <input id="joinCodeInput" class="join-input" maxlength="4" inputmode="numeric" placeholder="4자리 코드 입력">
+    <button class="menu-btn secondary" style="margin-top:8px;" onclick="joinRoomFromInput()">코드로 참가하기</button>
+  </div>
+  <p class="lobby-error" id="lobbyError"></p>
+  <button class="back-btn" style="margin-top:18px;" onclick="goHome()">← 홈으로</button>
+</div>
+
+<!-- ONLINE RANDOM MATCHING -->
+<div id="onlineMatching" class="screen hidden">
+  <p class="subtitle" style="margin-bottom:10px;">비슷한 시간에 매칭을 시작한 상대를 찾고 있어요</p>
+  <h1 class="title" style="font-size:40px;">매칭 중...</h1>
+  <p class="subtitle" id="matchingStatus">잠시만 기다려 주세요</p>
+  <button class="back-btn" onclick="cancelMatching()">취소</button>
+</div>
+
+<!-- ONLINE WAITING -->
+<div id="onlineWaiting" class="screen hidden">
+  <p class="subtitle" style="margin-bottom:8px;">이 코드를 상대에게 알려주세요</p>
+  <h1 class="title" id="waitCode" style="font-size:64px;">0000</h1>
+  <p class="subtitle" id="waitStatus">상대가 참가하면 자동으로 시작돼요...</p>
+  <button class="back-btn" onclick="cancelWaiting()">취소</button>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen game-screen hidden">
+  <button class="skill-btn hidden" id="skillBtn" onclick="skillBtnClicked()"></button>
+  <span class="skill-dots hidden" id="skillDots"></span>
+  <div class="topbar">
+    <button class="back-btn" onclick="goHome()">← 홈으로</button>
+    <span class="mode-label" id="modeLabel"></span>
+    <span class="round-count" id="roundCount">라운드 1</span>
+  </div>
+
+  <button class="combo-info-btn" onclick="toggleComboModal(true)">ⓘ 콤보 설명</button>
+
+  <div class="panel" id="oppPanel">
+    <div class="panel-head">
+      <span class="panel-name" id="oppName">AI</span>
+      <div class="score-track" id="oppTrack"></div>
+    </div>
+    <div class="dice-grid" id="oppDice"></div>
+  </div>
+
+  <div class="vs-row">
+    <div class="score-col">
+      <span class="sum-badge" id="oppSum">0</span>
+      <span class="combo-tag" id="oppCombo">&nbsp;</span>
+    </div>
+    <span class="vs-word">VS</span>
+    <div class="score-col">
+      <span class="sum-badge" id="meSum">0</span>
+      <span class="combo-tag" id="meCombo">&nbsp;</span>
+    </div>
+  </div>
+
+  <div class="panel" id="mePanel">
+    <div class="dice-grid" id="meDice"></div>
+    <div class="panel-head" style="padding:10px 8px 0;">
+      <span class="panel-name" id="meName">나</span>
+      <div class="score-track" id="meTrack"></div>
+    </div>
+  </div>
+
+  <div class="turn-bar">
+    <span class="turn-text" id="turnText">-</span>
+    <button class="pass-btn" id="passBtn" onclick="passClicked()">패스</button>
+  </div>
+
+  <p class="result-line" id="resultLine"></p>
+  <button class="next-btn hidden" id="nextBtn" onclick="startNextRound()">다음 라운드</button>
+</div>
+
+<!-- COMBO MODAL -->
+<div id="comboModal" class="modal-overlay hidden" onclick="if(event.target===this) toggleComboModal(false)">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span class="modal-title">콤보 배수표</span>
+      <button class="modal-close" onclick="toggleComboModal(false)">✕</button>
+    </div>
+    <p class="modal-note hidden" id="comboRoleInfo"></p>
+    <div class="combo-list">
+      <div class="combo-row"><span class="combo-name">식스 오브 카인드</span><span class="combo-desc">같은 눈 6개</span><span class="combo-mult">×3</span></div>
+      <div class="combo-row"><span class="combo-name">풀 스트레이트</span><span class="combo-desc">1~6 전부 한 번씩</span><span class="combo-mult">×2.5</span></div>
+      <div class="combo-row"><span class="combo-name">파이브 오브 카인드</span><span class="combo-desc">같은 눈 5개</span><span class="combo-mult">×2.2</span></div>
+      <div class="combo-row"><span class="combo-name">포카드 + 페어</span><span class="combo-desc">같은 눈 4개 + 2개</span><span class="combo-mult">×2</span></div>
+      <div class="combo-row"><span class="combo-name">더블 트리플</span><span class="combo-desc">같은 눈 3개씩 2쌍</span><span class="combo-mult">×1.9</span></div>
+      <div class="combo-row"><span class="combo-name">포카드</span><span class="combo-desc">같은 눈 4개</span><span class="combo-mult">×1.8</span></div>
+      <div class="combo-row"><span class="combo-name">트리플 + 페어</span><span class="combo-desc">같은 눈 3개 + 2개</span><span class="combo-mult">×1.6</span></div>
+      <div class="combo-row"><span class="combo-name">쓰리 페어</span><span class="combo-desc">2개씩 짝 3쌍</span><span class="combo-mult">×1.5</span></div>
+      <div class="combo-row"><span class="combo-name">트리플</span><span class="combo-desc">같은 눈 3개</span><span class="combo-mult">×1.4</span></div>
+      <div class="combo-row"><span class="combo-name">투 페어</span><span class="combo-desc">2개씩 짝 2쌍</span><span class="combo-mult">×1.25</span></div>
+      <div class="combo-row"><span class="combo-name">원 페어</span><span class="combo-desc">같은 눈 2개</span><span class="combo-mult">×1.1</span></div>
+      <div class="combo-row"><span class="combo-name">콤보 없음</span><span class="combo-desc">해당 없음</span><span class="combo-mult">×1</span></div>
+    </div>
+    <p class="modal-note">최종 점수 = (주사위 6개 합) × 콤보 배수, 소수점은 반올림</p>
+  </div>
+</div>
+
+<!-- END -->
+<div id="end" class="screen hidden">
+  <div class="end-card">
+    <p class="end-title" id="endTitle">승리!</p>
+    <p class="end-sub" id="endSub"></p>
+    <button class="menu-btn" onclick="restartSameMode()">다시하기</button>
+    <button class="menu-btn secondary" onclick="goHome()">홈으로</button>
+  </div>
+</div>
+
+<script>
+const PIP_MAP = {1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
+
+let mode = 'ai';
+let score = {opp:0, me:0};
+let round = 1;
+let values = {opp:[], me:[]};
+let locked = {opp:[], me:[]};
+let order = [];
+let turnPtr = 0;
+let busy = false;
+
+// 친구 대결 전용 스킬 버튼 상태: 0=꺼짐, 1·3=위쪽 주사위에서 1,2,3 확률 제거(4~6만 등장), 아래쪽은 그대로, 2·4=반대(아래쪽 1,2,3 확률 제거, 위쪽은 그대로)
+let skillState = 0;
+
+let onlineRoomCode = null;
+let myRole = null; // 'p1' | 'p2'
+let onlinePollTimer = null;
+let onlineState = null;
+
+let myPlayerId = null;
+let myQueueTimestamp = null;
+let matchPollTimer = null;
+
+/* ================= ONLINE STORAGE BACKEND =================
+   Inside a Claude artifact, window.storage is provided natively and is used as-is.
+   Outside Claude (downloaded file, hosted anywhere), window.storage doesn't exist,
+   so we fall back to a real Supabase project (free tier) with the exact same
+   get/set/delete/list shape. No setup needed — it's already live. */
+
+const SUPABASE_URL = 'https://guzagfvxejmwdgdrypby.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1emFnZnZ4ZWptd2RnZHJ5cGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMjIzMTAsImV4cCI6MjEwNDg5ODMxMH0.GXHuSrtcgGDwHDqlHG_bMWKQYqf_6pNTxJt5bQ274e8';
+const SUPABASE_TABLE_URL = SUPABASE_URL + '/rest/v1/kv_store';
+const SUPABASE_HEADERS = {
+  'apikey': SUPABASE_ANON_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+  'Content-Type': 'application/json'
+};
+
+const SupabaseStorage = {
+  async get(key){
+    const res = await fetch(SUPABASE_TABLE_URL + '?key=eq.' + encodeURIComponent(key) + '&select=value', {
+      headers: SUPABASE_HEADERS
+    });
+    if(!res.ok) throw new Error('supabase-error-' + res.status);
+    const rows = await res.json();
+    if(!rows || rows.length === 0) throw new Error('not-found');
+    return { key, value: rows[0].value, shared: true };
+  },
+  async set(key, value){
+    const res = await fetch(SUPABASE_TABLE_URL, {
+      method: 'POST',
+      headers: Object.assign({}, SUPABASE_HEADERS, { 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify([{ key, value, updated_at: new Date().toISOString() }])
+    });
+    if(!res.ok) throw new Error('supabase-error-' + res.status);
+    return { key, value, shared: true };
+  },
+  async delete(key){
+    const res = await fetch(SUPABASE_TABLE_URL + '?key=eq.' + encodeURIComponent(key), {
+      method: 'DELETE',
+      headers: Object.assign({}, SUPABASE_HEADERS, { 'Prefer': 'return=minimal' })
+    });
+    if(!res.ok) throw new Error('supabase-error-' + res.status);
+    return { key, deleted: true, shared: true };
+  },
+  async list(prefix){
+    const res = await fetch(SUPABASE_TABLE_URL + '?key=like.' + encodeURIComponent(prefix + '*') + '&select=key', {
+      headers: SUPABASE_HEADERS
+    });
+    if(!res.ok) throw new Error('supabase-error-' + res.status);
+    const rows = await res.json();
+    const keys = (rows || []).map(r => r.key);
+    return { keys, prefix, shared: true };
+  }
+};
+
+const NativeStorage = window.storage;
+if(!(NativeStorage && typeof NativeStorage.set === 'function')){
+  window.storage = SupabaseStorage;
+}
+
+function randDie(){ return 1 + Math.floor(Math.random()*6); }
+function randSix(){ return Array.from({length:6}, randDie); }
+
+// 퍼센트 가중치 배열을 받아 그 확률대로 값 하나를 뽑는다 (weights 합은 100)
+function weightedRandom(weights){
+  const r = Math.random()*100;
+  let acc = 0;
+  for(const w of weights){
+    acc += w.weight;
+    if(r < acc) return w.value;
+  }
+  return weights[weights.length-1].value;
+}
+
+// 라운드 시작 시 나머지 10자리(1~5): 1은 1%p 내리고 4는 1%p 올림
+const ROUND_START_WEIGHTS = [
+  {value:1, weight:19},
+  {value:2, weight:20},
+  {value:3, weight:20},
+  {value:4, weight:21},
+  {value:5, weight:20},
+];
+// 리롤 너프 쪽(1~4): 1은 1%p 내리고 4는 1%p 올림
+const NERF_WEIGHTS = [
+  {value:1, weight:24},
+  {value:2, weight:25},
+  {value:3, weight:25},
+  {value:4, weight:26},
+];
+
+// 친구 대결 라운드 시작: 위 6개 + 아래 6개, 총 12자리 중 딱 2자리만 정상 범위(1~6, 6이 나올 수도 있음)로 굴리고 나머지 10자리는 1~5만 나온다
+function generateFriendStartingDice(){
+  const slots = [];
+  for(let i=0;i<6;i++) slots.push('opp:'+i);
+  for(let i=0;i<6;i++) slots.push('me:'+i);
+  for(let i=slots.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [slots[i], slots[j]] = [slots[j], slots[i]];
+  }
+  const lucky = new Set(slots.slice(0,2));
+  const build = (side) => Array.from({length:6}, (_, i) => lucky.has(side+':'+i) ? randDie() : weightedRandom(ROUND_START_WEIGHTS));
+  return { opp: build('opp'), me: build('me') };
+}
+
+// 현재 skillState에 따라 어느 쪽이 "1,2,3 확률 제거(4~6만 등장)" 버프를 받는지 반환. null이면 스킬 꺼짐.
+function getBuffedSide(){
+  if(mode !== 'friend' || skillState === 0) return null;
+  if(skillState === 1 || skillState === 3) return 'opp'; // 위쪽
+  return 'me'; // 아래쪽 (skillState 2 또는 4)
+}
+
+// 리롤(주사위 개별 클릭) 시 사용하는 값 생성 - 버프 쪽은 4~6만, 반대쪽(너프)은 5,6 확률 제거(1~4만)
+function rollValueForDie(side, idx){
+  if(mode === 'friend'){
+    const buffedSide = getBuffedSide();
+    if(buffedSide){
+      const nerfedSide = (buffedSide === 'opp') ? 'me' : 'opp';
+      if(side === buffedSide) return 4 + Math.floor(Math.random()*3); // 4~6
+      if(side === nerfedSide) return weightedRandom(NERF_WEIGHTS); // 1~4
+    }
+  }
+  return randDie();
+}
+
+function refreshSkillButton(){
+  const show = (mode === 'friend' || mode === 'online');
+  document.getElementById('skillBtn').classList.toggle('hidden', !show);
+  document.getElementById('skillDots').classList.toggle('hidden', !show);
+}
+
+// 버튼을 눌러도 생김새는 그대로 유지되고, 내부 상태만 순환한다
+function skillBtnClicked(){
+  if(mode === 'online'){
+    if(!onlineState) return;
+    onlineState.skillState = ((onlineState.skillState||0) + 1) % 5;
+    updateSkillDots();
+    onlineState.seq = (onlineState.seq||0) + 1;
+    window.storage.set('room:'+onlineRoomCode, JSON.stringify(onlineState), true).catch(()=>{});
+    return;
+  }
+  skillState = (skillState + 1) % 5;
+  updateSkillDots();
+}
+
+function updateSkillDots(){
+  const dotsEl = document.getElementById('skillDots');
+  if(!dotsEl) return;
+  const s = mode === 'online' ? ((onlineState && onlineState.skillState) || 0) : skillState;
+  dotsEl.textContent = '.'.repeat(s);
+}
+
+// 온라인 대결에서 현재 스킬 상태에 따라 어느 역할(p1/p2)이 버프를 받는지 반환. null이면 스킬 꺼짐.
+function getOnlineBuffedRole(){
+  if(!onlineState || !onlineState.skillState) return null;
+  const s = onlineState.skillState;
+  if(s === 1 || s === 3) return 'p1';
+  return 'p2'; // s === 2 또는 4
+}
+
+// 온라인 대결 전용 굴림 값 생성 - 내 역할이 버프면 4~6만, 너프면 1~4만
+function onlineRollValue(){
+  const buffedRole = getOnlineBuffedRole();
+  if(buffedRole){
+    const nerfedRole = buffedRole === 'p1' ? 'p2' : 'p1';
+    if(myRole === buffedRole) return 4 + Math.floor(Math.random()*3); // 4~6
+    if(myRole === nerfedRole) return weightedRandom(NERF_WEIGHTS); // 1~4
+  }
+  return randDie();
+}
+
+function buildDiceGrid(containerId){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  for(let i=0;i<6;i++){
+    const die = document.createElement('div');
+    die.className = 'die';
+    die.dataset.idx = i;
+    for(let p=1;p<=9;p++){
+      const dot = document.createElement('div');
+      dot.className = 'pip-dot p'+p;
+      die.appendChild(dot);
+    }
+    el.appendChild(die);
+  }
+}
+
+function setDieValue(dieEl, value){
+  dieEl.querySelectorAll('.pip-dot').forEach(d => d.style.visibility = 'hidden');
+  PIP_MAP[value].forEach(p => { dieEl.querySelector('.p'+p).style.visibility = 'visible'; });
+}
+
+function buildTrack(containerId){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  for(let i=0;i<10;i++){
+    const pip = document.createElement('div');
+    pip.className = 'pip';
+    el.appendChild(pip);
+  }
+}
+function updateTrack(containerId, count){
+  const el = document.getElementById(containerId);
+  [...el.children].forEach((pip,i) => pip.classList.toggle('filled', i < count));
+}
+
+function sideLabel(side){
+  if(mode === 'online') return side === 'me' ? '나' : '상대';
+  if(side === 'me') return mode === 'ai' ? '나' : '아래 플레이어';
+  return mode === 'ai' ? 'AI' : '위 플레이어';
+}
+
+function startGame(m){
+  mode = m;
+  score = {opp:0, me:0};
+  round = 1;
+  skillState = 0;
+
+  document.getElementById('home').classList.add('hidden');
+  document.getElementById('end').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+
+  document.getElementById('modeLabel').textContent = m === 'ai' ? 'AI와 대결' : '친구와 대결';
+  document.getElementById('oppName').textContent = sideLabel('opp');
+  document.getElementById('meName').textContent = sideLabel('me');
+  document.getElementById('oppPanel').classList.toggle('flip', m === 'friend');
+
+  buildDiceGrid('oppDice');
+  buildDiceGrid('meDice');
+  buildTrack('oppTrack');
+  buildTrack('meTrack');
+  updateTrack('oppTrack', 0);
+  updateTrack('meTrack', 0);
+
+  attachDieHandlers('oppDice','opp');
+  attachDieHandlers('meDice','me');
+
+  refreshSkillButton();
+  updateSkillDots();
+
+  setupRound();
+}
+
+function attachDieHandlers(containerId, side){
+  const el = document.getElementById(containerId);
+  [...el.children].forEach((dieEl, idx) => {
+    dieEl.onclick = () => dieClicked(side, idx);
+  });
+}
+
+function setupRound(){
+  if(mode === 'friend'){
+    const dice = generateFriendStartingDice();
+    values.opp = dice.opp;
+    values.me = dice.me;
+  } else {
+    values.opp = randSix();
+    values.me = randSix();
+  }
+  locked.opp = new Array(6).fill(false);
+  locked.me = new Array(6).fill(false);
+
+  order = [];
+  for(let i=0;i<6;i++){ order.push({side:'opp', idx:i}); order.push({side:'me', idx:i}); }
+  turnPtr = 0;
+  busy = false;
+
+  renderAll();
+  document.getElementById('resultLine').textContent = '';
+  document.getElementById('resultLine').classList.remove('win');
+  refreshScoreboard();
+  document.getElementById('nextBtn').classList.add('hidden');
+  document.getElementById('roundCount').textContent = '라운드 ' + round;
+
+  activateTurn();
+}
+
+function renderAll(){
+  renderSide('oppDice','opp');
+  renderSide('meDice','me');
+}
+function renderSide(containerId, side){
+  const el = document.getElementById(containerId);
+  [...el.children].forEach((dieEl, idx) => {
+    setDieValue(dieEl, values[side][idx]);
+    dieEl.classList.toggle('locked', locked[side][idx]);
+    dieEl.classList.remove('active-turn');
+  });
+}
+
+function sumOf(side){ return values[side].reduce((a,b)=>a+b,0); }
+
+function evaluateCombo(vals){
+  const freq = {};
+  vals.forEach(v => freq[v] = (freq[v]||0)+1);
+  const counts = Object.values(freq).sort((a,b)=>b-a);
+  const isStraight = new Set(vals).size === 6;
+  if(counts[0] === 6) return {name:'식스 오브 카인드', mult:3};
+  if(isStraight) return {name:'풀 스트레이트', mult:2.5};
+  if(counts[0] === 5) return {name:'파이브 오브 카인드', mult:2.2};
+  if(counts[0] === 4 && counts[1] === 2) return {name:'포카드 + 페어', mult:2};
+  if(counts[0] === 4) return {name:'포카드', mult:1.8};
+  if(counts[0] === 3 && counts[1] === 3) return {name:'더블 트리플', mult:1.9};
+  if(counts[0] === 3 && counts[1] === 2) return {name:'트리플 + 페어', mult:1.6};
+  if(counts[0] === 3) return {name:'트리플', mult:1.4};
+  if(counts[0] === 2 && counts[1] === 2 && counts[2] === 2) return {name:'쓰리 페어', mult:1.5};
+  if(counts[0] === 2 && counts[1] === 2) return {name:'투 페어', mult:1.25};
+  if(counts[0] === 2) return {name:'원 페어', mult:1.1};
+  return {name:'', mult:1};
+}
+
+function finalScoreOf(side){
+  const vals = values[side];
+  const sum = vals.reduce((a,b)=>a+b,0);
+  const combo = evaluateCombo(vals);
+  return {sum, combo, final: Math.round(sum * combo.mult)};
+}
+
+function refreshScoreboard(){
+  const oppR = finalScoreOf('opp');
+  const meR = finalScoreOf('me');
+  document.getElementById('oppSum').textContent = oppR.final;
+  document.getElementById('meSum').textContent = meR.final;
+  document.getElementById('oppCombo').innerHTML = oppR.combo.name
+    ? `${oppR.combo.name} ×${oppR.combo.mult}` : '콤보 없음';
+  document.getElementById('meCombo').innerHTML = meR.combo.name
+    ? `${meR.combo.name} ×${meR.combo.mult}` : '콤보 없음';
+  return {oppR, meR};
+}
+
+function isHumanTurn(side){
+  if(side === 'me') return true;
+  return mode === 'friend';
+}
+
+function activateTurn(){
+  document.getElementById('oppPanel').classList.remove('turn-active');
+  document.getElementById('mePanel').classList.remove('turn-active');
+
+  if(turnPtr >= 12){ finalizeRound(); return; }
+  const cur = order[turnPtr];
+  const panelId = cur.side === 'opp' ? 'oppPanel' : 'mePanel';
+  document.getElementById(panelId).classList.add('turn-active');
+
+  const containerId = cur.side === 'opp' ? 'oppDice' : 'meDice';
+  const dieEl = document.getElementById(containerId).children[cur.idx];
+
+  if(isHumanTurn(cur.side)){
+    dieEl.classList.add('active-turn');
+    document.getElementById('turnText').innerHTML = `<b>${sideLabel(cur.side)}</b> 차례 · ${cur.idx+1}번째 주사위`;
+    document.getElementById('passBtn').classList.remove('hidden');
+  } else {
+    document.getElementById('turnText').textContent = `${sideLabel(cur.side)}가 굴리는 중...`;
+    document.getElementById('passBtn').classList.add('hidden');
+    setTimeout(() => aiAction(cur), 600);
+  }
+}
+
+function aiAction(cur){
+  if(Math.random() < 0.65){
+    animateRoll(cur.side, cur.idx);
+  } else {
+    locked[cur.side][cur.idx] = true;
+    renderAll();
+    refreshScoreboard();
+    nextTurn();
+  }
+}
+
+function dieClicked(side, idx){
+  if(busy) return;
+  if(mode === 'online'){
+    if(side !== 'me') return;
+    onlineDieClicked(idx);
+    return;
+  }
+  const cur = order[turnPtr];
+  if(!cur || cur.side !== side || cur.idx !== idx) return;
+  if(!isHumanTurn(side)) return;
+  animateRoll(side, idx);
+}
+
+function passClicked(){
+  if(busy) return;
+  if(mode === 'online'){ onlinePassClicked(); return; }
+  const cur = order[turnPtr];
+  if(!cur || !isHumanTurn(cur.side)) return;
+  locked[cur.side][cur.idx] = true;
+  renderAll();
+  refreshScoreboard();
+  nextTurn();
+}
+
+function animateRoll(side, idx){
+  busy = true;
+  const containerId = side === 'opp' ? 'oppDice' : 'meDice';
+  const dieEl = document.getElementById(containerId).children[idx];
+  dieEl.classList.add('rolling');
+  document.getElementById('passBtn').classList.add('hidden');
+
+  let ticks = 0;
+  const spin = setInterval(() => {
+    setDieValue(dieEl, rollValueForDie(side, idx));
+    ticks++;
+    if(ticks >= 7){
+      clearInterval(spin);
+      const final = rollValueForDie(side, idx);
+      values[side][idx] = final;
+      setDieValue(dieEl, final);
+      locked[side][idx] = true;
+      dieEl.classList.remove('rolling');
+      renderAll();
+      refreshScoreboard();
+      busy = false;
+      nextTurn();
+    }
+  }, 65);
+}
+
+function updateSums(){
+  document.getElementById('oppSum').textContent = sumOf('opp');
+  document.getElementById('meSum').textContent = sumOf('me');
+}
+
+function nextTurn(){
+  turnPtr++;
+  activateTurn();
+}
+
+function finalizeRound(){
+  document.getElementById('oppPanel').classList.remove('turn-active');
+  document.getElementById('mePanel').classList.remove('turn-active');
+  document.getElementById('turnText').textContent = '라운드 종료';
+  document.getElementById('passBtn').classList.add('hidden');
+
+  const {oppR, meR} = refreshScoreboard();
+  const resultLine = document.getElementById('resultLine');
+
+  if(meR.final > oppR.final){
+    score.me++;
+    updateTrack('meTrack', score.me);
+    resultLine.textContent = `${sideLabel('me')} 승! (${meR.final} : ${oppR.final})`;
+    resultLine.classList.add('win');
+  } else if(oppR.final > meR.final){
+    score.opp++;
+    updateTrack('oppTrack', score.opp);
+    resultLine.textContent = `${sideLabel('opp')} 승! (${oppR.final} : ${meR.final})`;
+    resultLine.classList.add('win');
+  } else {
+    resultLine.textContent = `무승부 (${meR.final} : ${oppR.final})`;
+  }
+
+  if(score.me >= 10 || score.opp >= 10){
+    setTimeout(() => showEnd(score.me >= 10), 900);
+    return;
+  }
+
+  round++;
+  document.getElementById('nextBtn').classList.remove('hidden');
+}
+
+function startNextRound(){
+  if(mode === 'online'){ onlineNextRound(); return; }
+  setupRound();
+}
+
+function showEnd(meWon){
+  document.getElementById('game').classList.add('hidden');
+  document.getElementById('end').classList.remove('hidden');
+  document.getElementById('endTitle').textContent = (meWon ? sideLabel('me') : sideLabel('opp')) + ' 승리!';
+  document.getElementById('endSub').textContent = `최종 점수 ${score.me} : ${score.opp}`;
+}
+
+function restartSameMode(){
+  document.getElementById('end').classList.add('hidden');
+  if(mode === 'online'){ onlineRematch(); return; }
+  startGame(mode);
+}
+
+function goHome(){
+  stopOnlinePoll();
+  if(matchPollTimer){ clearInterval(matchPollTimer); matchPollTimer = null; }
+  if(myPlayerId) cleanupQueueEntry(myPlayerId);
+  onlineRoomCode = null;
+  myRole = null;
+  onlineState = null;
+  myPlayerId = null;
+  document.getElementById('game').classList.add('hidden');
+  document.getElementById('end').classList.add('hidden');
+  document.getElementById('onlineLobby').classList.add('hidden');
+  document.getElementById('onlineWaiting').classList.add('hidden');
+  document.getElementById('onlineMatching').classList.add('hidden');
+  document.getElementById('home').classList.remove('hidden');
+  toggleComboModal(false);
+}
+
+function toggleComboModal(show){
+  document.getElementById('comboModal').classList.toggle('hidden', !show);
+  const roleInfo = document.getElementById('comboRoleInfo');
+  if(show && mode === 'online' && myRole){
+    roleInfo.textContent = '내 판정: ' + (myRole === 'p1' ? '위쪽 주사위' : '아래쪽 주사위');
+    roleInfo.classList.remove('hidden');
+  } else {
+    roleInfo.classList.add('hidden');
+  }
+}
+
+/* ================= ONLINE MODE ================= */
+
+function buildOrderGeneric(){
+  const o = [];
+  for(let i=0;i<6;i++){ o.push({side:'p1', idx:i}); o.push({side:'p2', idx:i}); }
+  return o;
+}
+
+function comboScore(vals){
+  const sum = vals.reduce((a,b)=>a+b,0);
+  const combo = evaluateCombo(vals);
+  return {sum, combo, final: Math.round(sum * combo.mult)};
+}
+
+function freshOnlineState(){
+  return {
+    p2Joined:false,
+    score:{p1:0,p2:0},
+    round:1,
+    values:{p1:randSix(), p2:randSix()},
+    locked:{p1:new Array(6).fill(false), p2:new Array(6).fill(false)},
+    order:buildOrderGeneric(),
+    turnPtr:0,
+    status:'waiting',
+    winner:null,
+    lastWinnerRole:undefined,
+    skillState:0,
+    seq:0
+  };
+}
+
+function showOnlineLobby(){
+  document.getElementById('home').classList.add('hidden');
+  document.getElementById('onlineLobby').classList.remove('hidden');
+  document.getElementById('lobbyError').textContent = '';
+}
+
+async function createRoom(){
+  document.getElementById('lobbyError').textContent = '';
+  let code, isFree = false;
+  for(let attempt=0; attempt<5 && !isFree; attempt++){
+    code = String(Math.floor(1000 + Math.random()*9000));
+    try{
+      await window.storage.get('room:'+code, true);
+      isFree = false;
+    }catch(e){
+      isFree = true;
+    }
+  }
+  myRole = 'p1';
+  onlineRoomCode = code;
+  const state = freshOnlineState();
+  try{
+    await window.storage.set('room:'+code, JSON.stringify(state), true);
+  }catch(e){
+    document.getElementById('lobbyError').textContent = '방 생성에 실패했어요. 다시 시도해 주세요.';
+    return;
+  }
+  onlineState = state;
+  document.getElementById('onlineLobby').classList.add('hidden');
+  document.getElementById('onlineWaiting').classList.remove('hidden');
+  document.getElementById('waitCode').textContent = code;
+  document.getElementById('waitStatus').textContent = '상대가 참가하면 자동으로 시작돼요...';
+  startWaitPoll();
+}
+
+async function joinRoomFromInput(){
+  const input = document.getElementById('joinCodeInput');
+  const code = (input.value || '').trim();
+  const errEl = document.getElementById('lobbyError');
+  errEl.textContent = '';
+  if(!/^[0-9]{4}$/.test(code)){
+    errEl.textContent = '4자리 숫자 코드를 입력해 주세요.';
+    return;
+  }
+  let state;
+  try{
+    const res = await window.storage.get('room:'+code, true);
+    state = JSON.parse(res.value);
+  }catch(e){
+    errEl.textContent = '존재하지 않는 방 코드예요.';
+    return;
+  }
+  if(state.p2Joined){
+    errEl.textContent = '이미 가득 찬 방이에요.';
+    return;
+  }
+  state.p2Joined = true;
+  state.status = 'playing';
+  state.seq = (state.seq||0) + 1;
+  myRole = 'p2';
+  onlineRoomCode = code;
+  try{
+    await window.storage.set('room:'+code, JSON.stringify(state), true);
+  }catch(e){
+    errEl.textContent = '참가에 실패했어요. 다시 시도해 주세요.';
+    return;
+  }
+  onlineState = state;
+  enterOnlineGameScreen();
+  renderOnlineState(state);
+  startOnlinePoll();
+}
+
+function cancelWaiting(){
+  stopOnlinePoll();
+  onlineRoomCode = null;
+  myRole = null;
+  onlineState = null;
+  document.getElementById('onlineWaiting').classList.add('hidden');
+  document.getElementById('onlineLobby').classList.remove('hidden');
+}
+
+function startWaitPoll(){
+  onlinePollTimer = setInterval(async () => {
+    try{
+      const res = await window.storage.get('room:'+onlineRoomCode, true);
+      const state = JSON.parse(res.value);
+      if(state.p2Joined){
+        clearInterval(onlinePollTimer);
+        onlineState = state;
+        enterOnlineGameScreen();
+        renderOnlineState(state);
+        startOnlinePoll();
+      }
+    }catch(e){ /* keep waiting */ }
+  }, 1500);
+}
+
+function stopOnlinePoll(){
+  if(onlinePollTimer){ clearInterval(onlinePollTimer); onlinePollTimer = null; }
+}
+
+function startOnlinePoll(){
+  stopOnlinePoll();
+  onlinePollTimer = setInterval(async () => {
+    try{
+      const res = await window.storage.get('room:'+onlineRoomCode, true);
+      const state = JSON.parse(res.value);
+      if(!onlineState || state.seq !== onlineState.seq){
+        onlineState = state;
+        renderOnlineState(state);
+      }
+    }catch(e){ /* transient */ }
+  }, 1200);
+}
+
+function enterOnlineGameScreen(){
+  mode = 'online';
+  document.getElementById('onlineLobby').classList.add('hidden');
+  document.getElementById('onlineWaiting').classList.add('hidden');
+  document.getElementById('home').classList.add('hidden');
+  document.getElementById('end').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+
+  document.getElementById('modeLabel').textContent = '온라인 대결 · 방 ' + onlineRoomCode;
+  document.getElementById('oppName').textContent = '상대';
+  document.getElementById('meName').textContent = '나';
+  document.getElementById('oppPanel').classList.remove('flip');
+
+  buildDiceGrid('oppDice');
+  buildDiceGrid('meDice');
+  buildTrack('oppTrack');
+  buildTrack('meTrack');
+  attachDieHandlers('oppDice','opp');
+  attachDieHandlers('meDice','me');
+
+  refreshSkillButton();
+}
+
+function mapRemoteToLocal(state){
+  const mineKey = myRole;
+  const oppKey = myRole === 'p1' ? 'p2' : 'p1';
+  values.me = state.values[mineKey];
+  values.opp = state.values[oppKey];
+  locked.me = state.locked[mineKey];
+  locked.opp = state.locked[oppKey];
+  score.me = state.score[mineKey];
+  score.opp = state.score[oppKey];
+  round = state.round;
+  turnPtr = state.turnPtr;
+  order = state.order.map(o => ({ side: o.side === mineKey ? 'me' : 'opp', idx: o.idx }));
+}
+
+function renderOnlineState(state){
+  mapRemoteToLocal(state);
+  renderAll();
+  updateTrack('oppTrack', score.opp);
+  updateTrack('meTrack', score.me);
+  document.getElementById('roundCount').textContent = '라운드 ' + round;
+  refreshScoreboard();
+  updateSkillDots();
+
+  if(state.status === 'finished'){
+    stopOnlinePoll();
+    showEnd(state.winner === myRole);
+    return;
+  }
+
+  document.getElementById('oppPanel').classList.remove('turn-active');
+  document.getElementById('mePanel').classList.remove('turn-active');
+  [...document.getElementById('meDice').children].forEach(d => d.classList.remove('active-turn'));
+
+  if(turnPtr >= 12){
+    document.getElementById('turnText').textContent = '라운드 종료';
+    document.getElementById('passBtn').classList.add('hidden');
+    let resultText = '';
+    if(state.lastWinnerRole){
+      const winLabel = state.lastWinnerRole === myRole ? '나' : '상대';
+      resultText = `${winLabel} 승! (${state.lastR1Final} : ${state.lastR2Final})`;
+    } else if(state.lastWinnerRole === null && state.lastR1Final !== undefined){
+      resultText = `무승부 (${state.lastR1Final} : ${state.lastR2Final})`;
+    }
+    document.getElementById('resultLine').textContent = resultText;
+    document.getElementById('resultLine').classList.toggle('win', !!state.lastWinnerRole);
+    document.getElementById('nextBtn').classList.remove('hidden');
+    return;
+  }
+
+  document.getElementById('resultLine').textContent = '';
+  document.getElementById('resultLine').classList.remove('win');
+  document.getElementById('nextBtn').classList.add('hidden');
+
+  const cur = order[turnPtr];
+  document.getElementById(cur.side === 'opp' ? 'oppPanel' : 'mePanel').classList.add('turn-active');
+
+  if(cur.side === 'me'){
+    document.getElementById('meDice').children[cur.idx].classList.add('active-turn');
+    document.getElementById('turnText').innerHTML = `<b>나</b> 차례 · ${cur.idx+1}번째 주사위`;
+    document.getElementById('passBtn').classList.remove('hidden');
+  } else {
+    document.getElementById('turnText').textContent = '상대 차례 · 기다리는 중...';
+    document.getElementById('passBtn').classList.add('hidden');
+  }
+}
+
+async function applyOnlineAction(idx, finalValue){
+  const state = onlineState;
+  const cur = state.order[state.turnPtr];
+  if(!cur || cur.side !== myRole || cur.idx !== idx) return;
+
+  state.values[myRole][idx] = finalValue;
+  state.locked[myRole][idx] = true;
+  state.turnPtr++;
+
+  if(state.turnPtr >= 12){
+    const r1 = comboScore(state.values.p1);
+    const r2 = comboScore(state.values.p2);
+
+    let winnerRole = null;
+    if(r1.final > r2.final) winnerRole = 'p1';
+    else if(r2.final > r1.final) winnerRole = 'p2';
+
+    state.lastWinnerRole = winnerRole; // null = tie, else 'p1'/'p2' — role-neutral, resolved at render time
+    state.lastR1Final = r1.final;
+    state.lastR2Final = r2.final;
+
+    if(winnerRole){
+      state.score[winnerRole]++;
+    }
+
+    if(state.score.p1 >= 10 || state.score.p2 >= 10){
+      state.status = 'finished';
+      state.winner = state.score.p1 >= 10 ? 'p1' : 'p2';
+    } else {
+      state.round++;
+    }
+  }
+
+  state.seq = (state.seq||0) + 1;
+  onlineState = state;
+  renderOnlineState(state);
+  try{
+    await window.storage.set('room:'+onlineRoomCode, JSON.stringify(state), true);
+  }catch(e){ /* will resync on next poll */ }
+}
+
+function onlineDieClicked(idx){
+  if(busy || !onlineState) return;
+  const cur = onlineState.order[onlineState.turnPtr];
+  if(!cur || cur.side !== myRole || cur.idx !== idx) return;
+  busy = true;
+  const dieEl = document.getElementById('meDice').children[idx];
+  dieEl.classList.add('rolling');
+  let ticks = 0;
+  const spin = setInterval(() => {
+    setDieValue(dieEl, onlineRollValue());
+    ticks++;
+    if(ticks >= 7){
+      clearInterval(spin);
+      const finalVal = onlineRollValue();
+      setDieValue(dieEl, finalVal);
+      dieEl.classList.remove('rolling');
+      busy = false;
+      applyOnlineAction(idx, finalVal);
+    }
+  }, 65);
+}
+
+function onlinePassClicked(){
+  if(busy || !onlineState) return;
+  const cur = onlineState.order[onlineState.turnPtr];
+  if(!cur || cur.side !== myRole) return;
+  const keepVal = onlineState.values[myRole][cur.idx];
+  applyOnlineAction(cur.idx, keepVal);
+}
+
+async function onlineNextRound(){
+  const state = onlineState;
+  state.values = {p1:randSix(), p2:randSix()};
+  state.locked = {p1:new Array(6).fill(false), p2:new Array(6).fill(false)};
+  state.order = buildOrderGeneric();
+  state.turnPtr = 0;
+  state.lastWinnerRole = undefined;
+  state.lastR1Final = undefined;
+  state.lastR2Final = undefined;
+  state.seq = (state.seq||0) + 1;
+  onlineState = state;
+  renderOnlineState(state);
+  try{
+    await window.storage.set('room:'+onlineRoomCode, JSON.stringify(state), true);
+  }catch(e){ /* resync on next poll */ }
+}
+
+async function onlineRematch(){
+  const state = onlineState;
+  state.score = {p1:0, p2:0};
+  state.round = 1;
+  state.values = {p1:randSix(), p2:randSix()};
+  state.locked = {p1:new Array(6).fill(false), p2:new Array(6).fill(false)};
+  state.order = buildOrderGeneric();
+  state.turnPtr = 0;
+  state.skillState = 0;
+  state.status = 'playing';
+  state.winner = null;
+  state.lastWinnerRole = undefined;
+  state.lastR1Final = undefined;
+  state.lastR2Final = undefined;
+  state.seq = (state.seq||0) + 1;
+  onlineState = state;
+  document.getElementById('end').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+  renderOnlineState(state);
+  startOnlinePoll();
+  try{
+    await window.storage.set('room:'+onlineRoomCode, JSON.stringify(state), true);
+  }catch(e){ /* resync on next poll */ }
+}
+
+/* ================= RANDOM MATCHMAKING ================= */
+
+function cleanupQueueEntry(id){
+  window.storage.delete('mm:waiting:'+id, true).catch(()=>{});
+}
+
+async function startRandomMatch(){
+  document.getElementById('lobbyError').textContent = '';
+
+  myPlayerId = Date.now() + '-' + Math.random().toString(36).slice(2,8);
+  myQueueTimestamp = Date.now();
+
+  try{
+    await window.storage.set('mm:waiting:' + myPlayerId, JSON.stringify({ts: myQueueTimestamp}), true);
+  }catch(e){
+    document.getElementById('lobbyError').textContent = '매칭 대기열 등록에 실패했어요: ' + (e && e.message ? e.message : e);
+    return;
+  }
+
+  document.getElementById('onlineLobby').classList.add('hidden');
+  document.getElementById('onlineMatching').classList.remove('hidden');
+  document.getElementById('matchingStatus').textContent = '잠시만 기다려 주세요';
+
+  startMatchPoll();
+}
+
+function cancelMatching(){
+  if(matchPollTimer){ clearInterval(matchPollTimer); matchPollTimer = null; }
+  if(myPlayerId) cleanupQueueEntry(myPlayerId);
+  myPlayerId = null;
+  document.getElementById('onlineMatching').classList.add('hidden');
+  document.getElementById('onlineLobby').classList.remove('hidden');
+}
+
+function startMatchPoll(){
+  matchPollTimer = setInterval(async () => {
+    if(!myPlayerId) return;
+
+    // 1) has someone already claimed us as their match partner?
+    let matchPtr = null;
+    try{
+      const res = await window.storage.get('mm:match:' + myPlayerId, true);
+      matchPtr = JSON.parse(res.value);
+    }catch(e){ matchPtr = null; }
+
+    if(matchPtr && matchPtr.roomCode){
+      clearInterval(matchPollTimer);
+      matchPollTimer = null;
+      onlineRoomCode = matchPtr.roomCode;
+      myRole = 'p2';
+      let state = null;
+      try{
+        const r = await window.storage.get('room:' + onlineRoomCode, true);
+        state = JSON.parse(r.value);
+      }catch(e){ state = null; }
+      if(!state){
+        document.getElementById('matchingStatus').textContent = '연결에 실패했어요. 다시 시도해 주세요.';
+        return;
+      }
+      state.p2Joined = true;
+      state.status = 'playing';
+      state.seq = (state.seq||0) + 1;
+      onlineState = state;
+      try{ await window.storage.set('room:' + onlineRoomCode, JSON.stringify(state), true); }catch(e){}
+      cleanupQueueEntry(myPlayerId);
+      myPlayerId = null;
+      document.getElementById('onlineMatching').classList.add('hidden');
+      enterOnlineGameScreen();
+      renderOnlineState(state);
+      startOnlinePoll();
+      return;
+    }
+
+    // 2) otherwise scan the queue for a partner
+    let keys = [];
+    try{
+      const listRes = await window.storage.list('mm:waiting:', true);
+      keys = (listRes && listRes.keys) || [];
+    }catch(e){ keys = []; }
+
+    const others = keys.filter(k => k !== 'mm:waiting:' + myPlayerId);
+    if(others.length === 0) return;
+
+    const candidates = [];
+    for(const k of others.slice(0, 8)){
+      try{
+        const res = await window.storage.get(k, true);
+        const data = JSON.parse(res.value);
+        candidates.push({ id: k.replace('mm:waiting:', ''), ts: data.ts });
+      }catch(e){ /* entry may have just been claimed/removed */ }
+    }
+    if(candidates.length === 0) return;
+
+    // prefer whoever started searching closest to the same time as me
+    candidates.sort((a,b) => Math.abs(a.ts - myQueueTimestamp) - Math.abs(b.ts - myQueueTimestamp));
+    const best = candidates[0];
+
+    if(myPlayerId < best.id){
+      // I initiate: create the room and leave a pointer for my partner
+      let code, isFree = false;
+      for(let attempt=0; attempt<5 && !isFree; attempt++){
+        code = String(Math.floor(1000 + Math.random()*9000));
+        try{ await window.storage.get('room:'+code, true); isFree = false; }
+        catch(e){ isFree = true; }
+      }
+      myRole = 'p1';
+      onlineRoomCode = code;
+      const state = freshOnlineState();
+      try{
+        await window.storage.set('room:'+code, JSON.stringify(state), true);
+        await window.storage.set('mm:match:' + best.id, JSON.stringify({roomCode: code}), true);
+      }catch(e){
+        document.getElementById('matchingStatus').textContent = '연결에 실패했어요. 다시 시도해 주세요.';
+        return;
+      }
+      clearInterval(matchPollTimer);
+      matchPollTimer = null;
+      onlineState = state;
+      cleanupQueueEntry(myPlayerId);
+      cleanupQueueEntry(best.id);
+      myPlayerId = null;
+      document.getElementById('onlineMatching').classList.add('hidden');
+      document.getElementById('onlineWaiting').classList.remove('hidden');
+      document.getElementById('waitCode').textContent = code;
+      document.getElementById('waitStatus').textContent = '상대와 연결하는 중...';
+      startWaitPoll();
+    }
+    // else: partner will initiate — keep waiting for the mm:match pointer
+  }, 1500);
+}
+</script>
+</body>
+</html>
